@@ -1,7 +1,8 @@
 const CACHE_NAME = 'forest-inventory-v1';
 const ASSETS = [
-    './cruiseapp.html',
+    './index.html',
     './db.js',
+    './styles.css',
     './components/Units.js',
     './components/Unit.js',
     './components/Plots.js',

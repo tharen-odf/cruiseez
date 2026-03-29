@@ -38,8 +38,8 @@ export default {
                             <td><input v-model="tree.severity_1" @input="save" class="cell-input"></td>
                             <td><input v-model="tree.damage_2" @input="save" class="cell-input"></td>
                             <td><input v-model="tree.severity_2" @input="save" class="cell-input"></td>
-                            <td><button @click="$emit('nav', {view:'logs', pid:unit.id, plotId:plot.id, treeId:tree.id})">Logs</button></td>
-                            <td><button class="danger" @click="delTree(tree.id)">X</button></td>
+                            <td><button class="table-button" @click="$emit('nav', {view:'logs', pid:unit.id, plotId:plot.id, treeId:tree.id})">✎</button></td>
+                            <td><button class="table-button" @click="delTree(tree.id)">❌</button></td>
                         </tr>
                     </tbody>
                 </table>

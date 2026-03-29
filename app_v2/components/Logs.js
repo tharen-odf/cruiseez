@@ -27,7 +27,7 @@ export default {
                             <td><input v-model="log.gross_bdft" @input="save" class="cell-input"></td>
                             <td><input v-model="log.net_cuft" @input="save" class="cell-input"></td>
                             <td><input v-model="log.net_bdft" @input="save" class="cell-input"></td>
-                            <td><button class="danger" @click="delLog(log.id)">X</button></td>
+                            <td><button class="table-button" @click="delLog(log.id)">❌</button></td>
                         </tr>
                     </tbody>
                 </table>

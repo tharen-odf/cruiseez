@@ -5,12 +5,27 @@ export default {
     template: `
         <div v-if="unit">
             <div class="flex-row">
-                <input placeholder="Unit Name" v-model="unit.name" @input="save">
-                <input placeholder="Project Name" v-model="unit.project_name" @input="save">
-                <input placeholder="Project ID" v-model="unit.project_id" @input="save">
-                <input placeholder="Net Area" v-model="unit.net_area" @input="save">
+                <div class="floating-label">
+                    <input placeholder=" " v-model="unit.name" @input="save">
+                    <label>Unit Name</label>
+                </div>
+                <div class="floating-label">
+                    <input placeholder=" " v-model="unit.project_name" @input="save">
+                    <label>Project Name</label>
+                </div>
+                <div class="floating-label">
+                    <input placeholder=" " v-model="unit.project_id" @input="save">
+                    <label>Project ID</label>
+                </div>
+                <div class="floating-label">
+                    <input placeholder=" " v-model="unit.net_area" @input="save">
+                    <label>Net Area</label>
+                </div>
             </div>
-            <textarea placeholder="Notes..." v-model="unit.notes" @input="save"></textarea>
+            <div class="floating-label">
+                <textarea placeholder=" " v-model="unit.notes" @input="save"></textarea>
+                <label>Notes...</label>
+            </div>
             <div id="map"></div>
             <div class="actions">
                 <button @click="$emit('nav', {view:'plots', id:unit.id})">Plots</button>

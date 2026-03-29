@@ -1,4 +1,3 @@
-import { ref, onMounted } from '../vue-deps.js'; // or from global if not using imports for Vue, but here we can just assume Vue is globally available
 import { dbGetAll, dbAdd, uid } from '../db.js';
 
 export default {
