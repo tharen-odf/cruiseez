@@ -2,12 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Forest Inventory – Offline</title>
+<title>Forest Inventory - Offline</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2f6f4e">
 
 <!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Vue 3 -->
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 
 <style>
 body { margin:0; font-family:system-ui,sans-serif; background:#f4f6f5; }
@@ -24,581 +29,78 @@ button.secondary { background:#777; }
 input, textarea { box-sizing: border-box; width:100%; margin:4px 0; padding:6px; }
 table { width:100%; border-collapse:collapse; }
 th, td { border:1px solid #ccc; padding:6px; text-align:left; }
-td { background:#fff; }
-td[contenteditable] { background:#fdfefe; }
 .actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
 #map { box-sizing: border-box; height:450px; width:100%; margin-top:10px; }
 .hidden { display:none; }
+
+/* Input styling for spreadsheet tables */
+.cell-input { width: 100%; border: none; background: transparent; padding: 0; outline: none; margin: 0; min-width: 40px; font-family: inherit; font-size: inherit; }
 </style>
 </head>
 
 <body>
 
-<header>
-  <button id="backBtn" class="hidden">◀ Back</button>
-  <strong id="title">Units</strong>
-</header>
+<div id="app">
+  <header>
+    <button v-show="nav.view !== 'units'" @click="goBack">◀ Back</button>
+    <strong>{{ title }}</strong>
+  </header>
 
-<main id="app"></main>
+  <main>
+    <component v-if="dbReady" :is="currentComponent" :nav-data="nav" @nav="navigate" @update-title="title = $event"></component>
+  </main>
+</div>
 
-<script>
-/* ============================================================
-   IndexedDB
-============================================================ */
-const DB_NAME = "forest_inventory_db";
-const DB_VERSION = 3;
-let db;
+<script type="module">
+import { openDB } from './db.js';
+import UnitsView from './components/Units.js';
+import UnitView from './components/Unit.js';
+import PlotsView from './components/Plots.js';
+import DesignsView from './components/Designs.js';
+import TreesView from './components/Trees.js';
+import LogsView from './components/Logs.js';
 
-function uid() {
-    return crypto.randomUUID();
-}
+const { createApp, ref, computed, shallowRef, onMounted } = Vue;
 
-function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = e => {
-      db = e.target.result;
-      db.createObjectStore("units", { keyPath: "id" });
-    };
-    req.onsuccess = e => { db = e.target.result; resolve(); };
-  });
-    req.onerror = e => reject(e.target.error);
-}
+const App = {
+    setup() {
+        const nav = ref({ view: "units", prev: null });
+        const title = ref("Units");
+        const dbReady = ref(false);
 
-function tx(store, mode="readonly") {
-  return db.transaction(store, mode).objectStore(store);
-}
+        onMounted(async () => {
+            await openDB();
+            dbReady.value = true;
+            
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js');
+            }
+        });
 
-function idbRequest(req) {
-  return new Promise((resolve, reject) => {
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
+        const currentComponent = computed(() => {
+            switch (nav.value.view) {
+                case 'units': return shallowRef(UnitsView);
+                case 'unit': return shallowRef(UnitView);
+                case 'plots': return shallowRef(PlotsView);
+                case 'designs': return shallowRef(DesignsView);
+                case 'trees': return shallowRef(TreesView);
+                case 'logs': return shallowRef(LogsView);
+            }
+        });
 
-// DB helper functions
-const dbGet = (store, key) => idbRequest(tx(store).get(key));
-const dbGetAll = store => idbRequest(tx(store).getAll());
-const dbPut = (store, val) => idbRequest(tx(store,"readwrite").put(val));
-const dbAdd = (store, val) => idbRequest(tx(store,"readwrite").add(val));
-const dbDel = (store, key) => idbRequest(tx(store,"readwrite").delete(key));
+        const navigate = (newNav) => {
+            nav.value = { ...newNav, prev: nav.value };
+        };
 
-function debounce(func, delay) {
-    let timeout;
-    return function(...args) {
-        const context = this;
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(context, args), delay);
-    };
-}
+        const goBack = () => {
+            if (nav.value.prev) nav.value = nav.value.prev;
+        };
 
-
-/* ============================================================
-   State & Navigation
-============================================================ */
-let nav = { view:"units" };
-const app = document.getElementById("app");
-const title = document.getElementById("title");
-const backBtn = document.getElementById("backBtn");
-
-backBtn.onclick = () => { nav = nav.prev; render(); };
-
-function setView(v) { nav = {...v, prev:nav}; render(); }
-
-/* ============================================================
-   Rendering
-============================================================ */
-/*
-  A simple helper to create an element with attributes and content.
-  e.g., createEl("div", { className: "card" }, "Hello")
-*/
-const createEl = (tag, attrs = {}, ...children) => {
-    const el = document.createElement(tag);
-    Object.assign(el, attrs);
-    el.append(...children);
-    return el;
+        return { nav, title, currentComponent, navigate, goBack, dbReady };
+    }
 };
 
-/* ============================================================
-   Rendering
-============================================================ */
-async function render() {
-  app.innerHTML = "";
-  backBtn.classList.toggle("hidden", nav.view === "units");
-
-  if (nav.view === "units") renderUnits();
-  if (nav.view === "unit") renderUnit();
-  if (nav.view === "plots") renderPlots();
-  if (nav.view === "designs") renderDesigns();
-  if (nav.view === "trees") renderTrees();
-  if (nav.view === "logs") renderLogs();
-}
-
-/* ============================================================
-   Units
-============================================================ */
-async function renderUnits() {
-  title.textContent = "Units";
-  const units = await dbGetAll("units");
-
-  const grid = createEl("div", { className: "grid" });
-
-  units.forEach(p => {
-    grid.appendChild(
-      createEl("div", {
-        className: "card",
-        onclick: () => setView({view:"unit", id:p.id})
-      },
-        createEl("h3", {},`Project: ${p.project_name || "<project>"}`),
-        createEl("h3", {},`Unit: ${p.name || "<unit>"}`),
-        createEl("small", {},
-          `${p.net_area || '--'} acres | `,
-          `${p.plots.length} plots`
-        )
-      )
-    );
-  });
-
-  const add = createEl("button", {
-    textContent: "+ New Unit",
-    onclick: async () => {
-      const unit = { id: uid(), name: "", project_id: "", project_name: "", net_area: "", notes: "", polygon: null, plots: [], designs: [] };
-      await dbAdd("units", unit);
-      render();
-    }
-  });
-
-  app.append(grid, add);
-}
-
-/* ============================================================
-   Unit + Geometry Editor
-============================================================ */
-async function renderUnit() {
-  title.textContent = "Unit";
-  const p = await dbGet("units", nav.id);
-
-  app.innerHTML = `
-    <div class="flex-row">
-      <input placeholder="Unit Name" value="${p.name}">
-      <input placeholder="Project Name" value="${p.project_name}">
-      <input placeholder="Project ID" value="${p.project_id}">
-      <input placeholder="Net Area" value="${p.net_area}">
-    </div>
-    <textarea placeholder="Notes...">${p.notes}</textarea>
-    <div id="map"></div>
-    <div class="actions">
-      <button id="plotsBtn">Plots</button>
-      <button id="designsBtn">Designs</button>
-      <button id="drawBtn" class="secondary">Draw Polygon</button>
-      <button id="clearBtn" class="secondary">Clear Polygon</button>
-      <button id="exportJSON">Export JSON</button>
-      <button id="exportCSV">Export CSV</button>
-      <button class="danger" id="del">Delete</button>
-    </div>
-  `;
-
-  const debouncedSave = debounce(() => dbPut("units", p), 500);
-  const [nameInput, projectNameInput, projectIdInput, projectNetArea, notesTextarea] = app.querySelectorAll("input,textarea");
-
-  const onInput = () => {
-    p.name = nameInput.value;
-    p.project_name = projectNameInput.value;
-    p.project_id = projectIdInput.value;
-    p.net_area = projectNetArea.value;
-    p.notes = notesTextarea.value;
-    debouncedSave();
-  };
-  nameInput.oninput = projectNameInput.oninput = projectIdInput.oninput = notesTextarea.oninput = onInput;
-
-  initMap(p);
-
-  document.getElementById("plotsBtn").onclick =
-    () => setView({view:"plots", id:p.id});
-
-  document.getElementById("designsBtn").onclick =
-    () => setView({view:"designs", id:p.id});
-
-  document.getElementById("del").onclick = async () => {
-    if(confirm("Delete unit?")) {
-      dbDel("units", p.id);
-      nav = {view:"units"};
-      render();
-    }
-  };
-
-  document.getElementById("exportJSON").onclick = () => exportJSON(p);
-  document.getElementById("exportCSV").onclick = () => exportCSV(p);
-}
-
-/* ============================================================
-   Geometry Map Editor
-============================================================ */
-let map; // Make map instance available outside the function
-function initMap(p) {
-  if (map) map.remove();
-  // Reassign the global map variable
-  map = L.map("map").setView([45.9336, -120.5583], 6);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-
-  let polygon;
-  if(p.polygon) {
-    polygon = L.geoJSON(p.polygon).addTo(map);
-    map.fitBounds(polygon.getBounds());
-  }
-
-  let isDrawing = false;
-  const drawBtn = document.getElementById("drawBtn");
-
-  drawBtn.onclick = () => {
-    isDrawing = !isDrawing;
-    drawBtn.classList.toggle("secondary", !isDrawing);
-    drawBtn.textContent = isDrawing ? "Finish Drawing" : "Draw Polygon";
-  };
-
-  document.getElementById("clearBtn").onclick = () => {
-    if (polygon) {
-      map.removeLayer(polygon);
-      polygon = null;
-      p.polygon = null;
-      dbPut("units", p);
-    }
-  };
-
-  map.on("click", e => {
-    if (!isDrawing) return;
-    const latlng = [e.latlng.lat, e.latlng.lng];
-    if (!polygon) polygon = L.polygon([latlng]).addTo(map);
-    else polygon.addLatLng(latlng);
-    p.polygon = polygon.toGeoJSON();
-    dbPut("units", p);
-  });
-}
-
-/* ============================================================
-   Plots
-============================================================ */
-async function renderPlots() {
-  title.textContent = "Plots";
-  const p = await dbGet("units", nav.id);
-  
-  const debouncedSave = debounce(() => dbPut("units", p), 500);
-
-  p.plots.forEach(plot => {
-    const inputs = {
-        name: createEl("input", { placeholder: "Plot ID", value: plot.name || "" }),
-        cruiser: createEl("input", { placeholder: "Cruiser", value: plot.cruiser || "" }),
-        slope: createEl("input", { placeholder: "Slope", value: plot.slope || "" }),
-        aspect: createEl("input", { placeholder: "Aspect", value: plot.aspect || "" }),
-        elevation: createEl("input", { placeholder: "Elevation", value: plot.elevation || "" }),
-        planned_lat: createEl("input", { placeholder: "Planned Lat", value: plot.planned_lat || "" }),
-        planned_lon: createEl("input", { placeholder: "Planned Lon", value: plot.planned_lon || "" }),
-        gps_lat: createEl("input", { placeholder: "GPS Lat", value: plot.gps_lat || "" }),
-        gps_lon: createEl("input", { placeholder: "GPS Lon", value: plot.gps_lon || "" }),
-        gps_accuracy: createEl("input", { placeholder: "GPS Accuracy", value: plot.gps_accuracy || "" }),
-        gps_timestamp: createEl("input", { placeholder: "GPS Time", value: plot.gps_timestamp || ""}),
-        notes: createEl("textarea", { placeholder: "Notes", textContent: plot.notes || "" })
-    };
-
-    for (const key in inputs) {
-        inputs[key].oninput = () => {
-            plot[key] = inputs[key].value;
-            debouncedSave();
-        };
-    }
-
-    const getGPS = () => {
-        navigator.geolocation.getCurrentPosition(
-            position => {
-                plot.gps_lat = position.coords.latitude.toFixed(6);
-                plot.gps_lon = position.coords.longitude.toFixed(6);
-                plot.gps_accuracy = position.coords.accuracy.toFixed(4);
-                plot.gps_timestamp = Date.now();
-                inputs.gps_lat.value = plot.gps_lat;
-                inputs.gps_lon.value = plot.gps_lon;
-                inputs.gps_accuracy.value = plot.gps_accuracy
-                inputs.gps_timestamp.value = plot.gps_timestamp;
-                dbPut("units", p);
-            },
-            error => {
-                alert(`GPS Error: ${error.message}`);
-            },
-            { enableHighAccuracy: true }
-        );
-    };
-
-    const card = createEl("div", { className: "card" },
-      createEl("div", { className: "flex-row" },inputs.name,inputs.cruiser),
-      createEl("div", { className: "flex-row" },
-        inputs.slope, inputs.aspect, inputs.elevation
-      ),
-      createEl("div", { className: "flex-row" },
-        inputs.planned_lat, inputs.planned_lon,
-        inputs.gps_lat, inputs.gps_lon,
-        inputs.gps_accuracy, inputs.gps_timestamp,
-      ),
-      inputs.notes,
-      createEl("div", { className: "actions" },
-        createEl("button", {
-          textContent: "Trees",
-          onclick: () => setView({view:"trees", pid:p.id, plotId:plot.id})
-        }),
-        createEl("button", {
-          className: "danger",
-          textContent: "Delete",
-          onclick: () => {
-            if(confirm("Delete plot?")) {
-              p.plots = p.plots.filter(x => x.id !== plot.id);
-              dbPut("units", p).then(render);
-            }
-          }
-        }),
-        createEl("button", { className: "secondary", textContent: "Get GPS", onclick: getGPS })
-      )
-    );
-    app.appendChild(card);
-  });
-
-  const add = createEl("button", { textContent: "+ Add Plot", onclick: () => {
-    p.plots.push({
-      id:uid(), name:"", cruiser:"", slope: "", aspect: "", elevation: "", notes: "",
-      planned_lat: "", planned_lon: "",
-      gps_lat: "", gps_lon: "", gps_accuracy: "", gps_timestamp: "",
-      trees:[], 
-    });
-    dbPut("units", p);
-    render();
-  }});
-  app.appendChild(add);
-}
-
-/* ============================================================
-   Designs
-============================================================ */
-async function renderDesigns() {
-  title.textContent = "Sample Designs";
-  const p = await dbGet("units", nav.id);
-
-  const debouncedSave = debounce(() => dbPut("units", p), 500);
-
-  (p.designs || []).forEach(design => {
-    const codeInput = createEl("input", { placeholder: "Code", value: design.code });
-    const methodInput = createEl("input", { placeholder: "Sample Method", value: design.method });
-    const sizeInput = createEl("input", { placeholder: "Sample Size", value: design.size });
-    const descTextarea = createEl("textarea", { placeholder: "Description", textContent: design.description });
-
-    const onInput = () => {
-      design.code = codeInput.value;
-      design.method = methodInput.value;
-      design.size = sizeInput.value;
-      design.description = descTextarea.value;
-      debouncedSave();
-    };
-    codeInput.oninput = methodInput.oninput = sizeInput.oninput = descTextarea.oninput = onInput;
-
-    const card = createEl("div", { className: "card" },
-      createEl("div", { className: "flex-row" }, 
-        codeInput, methodInput, sizeInput
-      ), descTextarea,
-      createEl("div", { className: "actions" },
-        createEl("button", {
-          className: "danger",
-          textContent: "Delete",
-          onclick: () => {
-            if(confirm("Delete design?")) {
-              p.designs = p.designs.filter(d => d.id !== design.id);
-              dbPut("units", p).then(render);
-            }
-          }
-        })
-      )
-    );
-    app.appendChild(card);
-  });
-
-  const add = createEl("button", { textContent: "+ Add Design", onclick: () => {
-    if (!p.designs) p.designs = [];
-    p.designs.push({id:uid(), code:"", method:"", size:"", description:""});
-    dbPut("units", p).then(render);
-  }});
-  app.appendChild(add);
-}
-
-/* ============================================================
-   Spreadsheet Trees
-============================================================ */
-async function renderTrees() {
-  title.textContent = "Trees";
-  const p = await dbGet("units", nav.pid);
-  const plot = p.plots.find(pl=>pl.id===nav.plotId);
-
-  const debouncedSave = debounce(() => dbPut("units", p), 500);
-
-  const table = createEl("table", {},
-    createEl("tr", {},
-      ...[
-        "ST", "#", "Cond", "Spp", "Cnt", "Diam", 
-        "FP", "FF", "TDF", "Bole Ht", "Tot Ht", 
-        "CR", "Pos", "Dmg-1", "Sev-1","Dmg-2", "Sev-2",
-        "Logs", "❌"].map(h => createEl("th", {}, h))
-    )
-  );
-
-  plot.trees.forEach(tree => {
-    const row = createEl("tr");
-    
-    const designSelect = createEl("select");
-    designSelect.append(createEl("option", {value: "", textContent: ""}));
-    (p.designs || []).forEach(d => {
-        designSelect.append(createEl("option", {value: d.code, textContent: d.code, selected: tree.designCode === d.code}));
-    });
-    designSelect.onchange = () => {
-        tree.designCode = designSelect.value;
-        debouncedSave();
-    };
-
-    row.appendChild(
-        createEl("td", {}, designSelect)
-    );
-        
-    const treeDataKeys = [ 
-      "number", "condition", "species", "count", "diameter", "form_point", "form_factor",
-      "tdf", "bole_height", "total_height", "crown_ratio", "position", "damage_1", "severity_1",
-      "damage_2", "severity_2"
-    ];
-
-    for (const key of treeDataKeys) {
-      const cell = createEl("td", { textContent: tree[key], contentEditable: true, "data-key": key });
-      cell.onblur = () => {
-        tree[key] = cell.textContent;
-        debouncedSave();
-      };
-      row.appendChild(cell);
-    }
-
-    row.append(
-      createEl("td", {}, createEl("button", { textContent: "Logs", onclick: () => setView({view:"logs", pid:p.id, plotId:plot.id, treeId:tree.id}) })),
-      createEl("td", {}, createEl("button", { className: "danger", textContent: "X", onclick: () => {
-        if (confirm("Delete tree?")) {
-            plot.trees = plot.trees.filter(t => t.id !== tree.id);
-            dbPut("units", p).then(render);
-        }
-      }}))
-    );
-    table.appendChild(row);
-  });
-
-  const add = createEl("button", { textContent: "+ Add Tree", onclick: () => {
-    plot.trees.push({
-      id:uid(), number:"", condition: "",  designCode: "", species:"", count:"",
-      diameter:"", form_point: "", form_factor: "",
-      tdf: "", bole_height: "", total_height:"",
-      crown_ratio: "", position: "", damage_1: "", severity_1: "",
-      damage_2: "", severity_2: "",
-      logs:[]
-    });
-    dbPut("units", p);
-    render();
-  }});
-
-  app.append(table, add);
-}
-
-/* ============================================================
-   Spreadsheet Logs
-============================================================ */
-async function renderLogs() {
-  title.textContent = "Logs";
-  const p = await dbGet("units", nav.pid);
-  const plot = p.plots.find(pl=>pl.id===nav.plotId);
-  const tree = plot.trees.find(t=>t.id===nav.treeId);
-
-  const debouncedSave = debounce(() => dbPut("units", p), 500);
-
-  const table = createEl("table", {},
-    createEl("tr", {},
-      ...["#", "Length", "Grade", "Def Type", "Def Amt", "Bole Ht", "Sm Dia", "Lg Dia", "Gr CuFt", "Gr BdFt", "Net CuFt", "Net BdFt", "❌"].map(h => createEl("th", {}, h))
-    )
-  );
-
-  tree.logs.forEach(log=>{
-    const row = createEl("tr");
-
-    const logDataKeys = [ 
-      "number", "length", "grade", "def_type", "def_amt", "bole_height", "small_diam", "large_diam", "gross_cuft", "gross_bdft", "net_cuft", "net_bdft"
-    ];
-
-    for (const key of logDataKeys) {
-      const cell = createEl("td", { textContent: log[key], contentEditable: true, "data-key": key });
-      cell.onblur = () => {
-        log[key] = cell.textContent;
-        debouncedSave();
-      };
-      row.appendChild(cell);
-    }
-
-    row.appendChild(
-      createEl("td", {}, createEl("button", { className: "danger", textContent: "X", onclick: () => {
-        if (confirm("Delete log?")) {
-            tree.logs = tree.logs.filter(l => l.id !== log.id);
-            dbPut("units", p).then(render);
-        }
-      }}))
-    );
-    table.appendChild(row);
-  });
-
-  const add = createEl("button", { textContent: "+ Add Log", onclick: () => {
-    tree.logs.push({id:uid(),number:"",length:"",diameter:"",grade:""});
-    dbPut("units", p);
-    render();
-  }});
-
-  app.append(table,add);
-}
-
-/* ============================================================
-   Export
-============================================================ */
-function exportJSON(unit) {
-  download(JSON.stringify(unit,null,2), "unit.json");
-}
-
-function exportCSV(unit) {
-  let rows=[
-    "unit,project,plot,design,tree,condition,species,count,diameter,form_point,form_factor,tdf,bole_height,total_height,crown_ratio,position,damage_1,severity_1,damage_2,severity_2,log_number,grade,bole_height,length,small_diam,large_diam,def_type,def_amt,gross_cuft,gross_bdft,net_cuft,net_bdft"];
-  (unit.plots || []).forEach(pl=>{
-    (pl.trees || []).forEach(t=>{
-      if (t.logs && t.logs.length > 0) {
-        t.logs.forEach(l=>{
-          rows.push([
-            unit.name,unit.project_name,pl.name,pl.cruiser,t.designCode,t.number,t.condition,t.species,t.count,t.diameter,t.form_point,t.form_factor,t.tdf,t.bole_height,t.total_height,t.crown_ratio,t.position,t.damage_1,t.severity_1,t.damage_2,t.severity_2,
-            l.number,l.grade,l.bole_height,l.length,l.small_diam,l.large_diam,l.def_type,l.def_amt,l.gross_cuft,l.gross_bdft,l.net_cuft,l.net_bdft
-          ].join(","));
-        });
-      } else {
-        // Include trees that have no logs
-        rows.push([
-          unit.name,unit.project_name,pl.name,pl.cruiser,t.designCode,t.number,t.condition,t.species,t.count,t.diameter,t.form_point,t.form_factor,t.tdf,t.bole_height,t.total_height,t.crown_ratio,t.position,t.damage_1,t.severity_1,t.damage_2,t.severity_2,
-          "","","","","","","","","","","",""
-        ].join(","));
-      }
-    });
-  });
-  download(rows.join("\n"),"inventory.csv");
-}
-
-function download(text,name){
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([text]));
-  a.download=name;
-  a.click();
-}
-
-/* ============================================================
-   Init
-============================================================ */
-openDB().then(render);
+createApp(App).mount('#app');
 </script>
 </body>
 </html>
