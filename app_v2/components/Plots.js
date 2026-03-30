@@ -18,15 +18,15 @@ export default {
                 <div class="flex-row">
                     <div class="floating-label">
                         <input placeholder=" " v-model="plot.slope" @input="save">
-                        <label>Slope</label>
+                        <label>Slope (%)</label>
                     </div>
                     <div class="floating-label">
                         <input placeholder=" " v-model="plot.aspect" @input="save">
-                        <label>Aspect</label>
+                        <label>Aspect (deg)</label>
                     </div>
                     <div class="floating-label">
                         <input placeholder=" " v-model="plot.elevation" @input="save">
-                        <label>Elev</label>
+                        <label>Elev (ft)</label>
                     </div>
                 </div>
                 <div class="flex-row">
@@ -39,19 +39,19 @@ export default {
                         <label>Plan Lon</label>
                     </div>
                     <div class="floating-label">
-                        <input placeholder=" " v-model="plot.gps_lat" @input="save">
+                        <input placeholder=" " v-model="plot.gps_lat" readonly>
                         <label>GPS Lat</label>
                     </div>
                     <div class="floating-label">
-                        <input placeholder=" " v-model="plot.gps_lon" @input="save">
+                        <input placeholder=" " v-model="plot.gps_lon" readonly>
                         <label>GPS Lon</label>
                     </div>
                     <div class="floating-label">
-                        <input placeholder=" " v-model="plot.gps_accuracy" @input="save">
+                        <input placeholder=" " v-model="plot.gps_accuracy" readonly>
                         <label>Acc (m)</label>
                     </div>
                     <div class="floating-label">
-                        <input placeholder=" " v-model="plot.gps_timestamp" @input="save">
+                        <input placeholder=" " v-model="plot.gps_timestamp" readonly>
                         <label>Time</label>
                     </div>
                 </div>

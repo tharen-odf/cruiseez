@@ -7,11 +7,11 @@ export default {
             <div class="flex-row">
                 <div class="floating-label">
                     <input placeholder=" " v-model="unit.name" @input="save">
-                    <label>Unit Name</label>
+                    <label>Unit</label>
                 </div>
                 <div class="floating-label">
                     <input placeholder=" " v-model="unit.project_name" @input="save">
-                    <label>Project Name</label>
+                    <label>Project</label>
                 </div>
                 <div class="floating-label">
                     <input placeholder=" " v-model="unit.project_id" @input="save">
@@ -24,14 +24,12 @@ export default {
             </div>
             <div class="floating-label">
                 <textarea placeholder=" " v-model="unit.notes" @input="save"></textarea>
-                <label>Notes...</label>
+                <label>Notes</label>
             </div>
             <div id="map"></div>
             <div class="actions">
                 <button @click="$emit('nav', {view:'plots', id:unit.id})">Plots</button>
                 <button @click="$emit('nav', {view:'designs', id:unit.id})">Designs</button>
-                <button class="secondary" @click="toggleDraw">{{ isDrawing ? 'Finish Drawing' : 'Draw Polygon' }}</button>
-                <button class="secondary" @click="clearPoly">Clear Polygon</button>
                 <button @click="exportJSON">Export JSON</button>
                 <button @click="exportCSV">Export CSV</button>
                 <button class="danger" @click="del">Delete</button>
@@ -41,9 +39,9 @@ export default {
     setup(props, { emit }) {
         const { ref, onMounted, onUnmounted } = Vue;
         const unit = ref(null);
-        const isDrawing = ref(false);
         let map = null;
-        let polygonLayer = null;
+        let drawnItems = null;
+        let home = { lat: 45.9336, lng: -120.5583, zoom: 6}
 
         const save = debounce(() => {
             if (unit.value) dbPut("units", JSON.parse(JSON.stringify(unit.value)));
@@ -51,21 +49,80 @@ export default {
 
         const initMap = () => {
             if (map) map.remove();
-            map = L.map("map").setView([45.9336, -120.5583], 6);
+            map = L.map("map").setView([home.lat, home.lng], home.zoom);
             L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
+            drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+
+            map.pm.setGlobalOptions({ 
+                layerGroup: drawnItems,
+                drawOptions: {
+                    tooltips: false
+                }
+             });
+
+            const handleEdit = () => {
+                unit.value.polygon = drawnItems.toGeoJSON();
+                unit.value.polygon_edited_timestamp = Date.now();
+                unit.value.polygon_edited_by = "user"; // Placeholder for user identification
+                save();
+            };
+
+            const bindEvents = (layer) => {
+                layer.on('pm:edit', handleEdit);
+                layer.on('pm:dragend', handleEdit);
+                layer.on('pm:cut', handleEdit);
+            };
+
             if (unit.value.polygon) {
-                polygonLayer = L.geoJSON(unit.value.polygon).addTo(map);
-                map.fitBounds(polygonLayer.getBounds());
+                const polygonLayer = L.geoJSON(unit.value.polygon);
+                polygonLayer.eachLayer(layer => {
+                    drawnItems.addLayer(layer);
+                    bindEvents(layer);
+                });
+                map.fitBounds(drawnItems.getBounds());
+                home.lat = drawnItems.getBounds().getCenter().lat;
+                home.lng = drawnItems.getBounds().getCenter().lng;
+                home.zoom = map.getZoom();
+                map.setView([home.lat, home.lng], home.zoom);
             }
 
-            map.on("click", e => {
-                if (!isDrawing.value) return;
-                const latlng = [e.latlng.lat, e.latlng.lng];
-                if (!polygonLayer) polygonLayer = L.polygon([latlng]).addTo(map);
-                else polygonLayer.addLatLng(latlng);
-                unit.value.polygon = polygonLayer.toGeoJSON();
-                save();
+            map.pm.addControls({
+                position: 'topleft',
+                drawMarker: false,
+                drawCircleMarker: false,
+                drawPolyline: false,
+                drawRectangle: false,
+                drawCircle: false,
+                drawText: false,
+                editMode: true,
+                dragMode: false,
+                cutPolygon: false,
+                removalMode: true,
+                rotateMode: false,
+                drawPolygon: drawnItems.getLayers().length === 0
+            });
+
+            map.on('pm:create', e => {
+                drawnItems.clearLayers();
+                drawnItems.addLayer(e.layer);
+                bindEvents(e.layer);
+                handleEdit();
+                map.pm.addControls({ drawPolygon: false });
+            });
+
+            map.on('pm:remove', e => {
+                if (confirm("Delete Polygon?")) { // The layer is already removed by geoman, this is for confirmation
+                    unit.value.polygon = null;
+                    unit.value.polygon_edited_timestamp = Date.now();
+                    unit.value.polygon_edited_by = "user"; // Placeholder for user identification
+                    save();
+                    map.pm.addControls({ drawPolygon: true });
+                } else {
+                    // If deletion is cancelled, add the layer back to the map
+                    drawnItems.addLayer(e.layer);
+                }
             });
         };
 
@@ -76,16 +133,6 @@ export default {
         });
 
         onUnmounted(() => { if (map) map.remove(); });
-
-        const toggleDraw = () => { isDrawing.value = !isDrawing.value; };
-        const clearPoly = () => {
-            if (polygonLayer && map) {
-                map.removeLayer(polygonLayer);
-                polygonLayer = null;
-                unit.value.polygon = null;
-                save();
-            }
-        };
 
         const del = async () => {
             if (confirm("Delete unit?")) {
@@ -105,6 +152,6 @@ export default {
             download(rows.join("\n"), "inventory.csv");
         };
 
-        return { unit, isDrawing, save, toggleDraw, clearPoly, del, exportJSON, exportCSV };
+        return { unit, save, del, exportJSON, exportCSV };
     }
 };

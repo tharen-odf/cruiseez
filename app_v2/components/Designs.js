@@ -6,11 +6,23 @@ export default {
         <div v-if="unit">
             <div v-for="design in unit.designs" :key="design.id" class="card">
                 <div class="flex-row">
-                    <input placeholder="Code" v-model="design.code" @input="save">
-                    <input placeholder="Sample Method" v-model="design.method" @input="save">
-                    <input placeholder="Sample Size" v-model="design.size" @input="save">
+                    <div class="floating-label">
+                        <input placeholder=" " v-model="design.code" @input="save">
+                        <label>Code</label>
+                    </div>
+                    <div class="floating-label">
+                        <input placeholder=" " v-model="design.method" @input="save">
+                        <label>Sample Method</label>
+                    </div>
+                    <div class="floating-label">
+                        <input placeholder=" " v-model="design.size" @input="save">
+                        <label>Sample Size</label>
+                    </div>
                 </div>
-                <textarea placeholder="Description" v-model="design.description" @input="save"></textarea>
+                <div class="floating-label">
+                    <textarea placeholder=" " v-model="design.description" @input="save"></textarea>
+                    <label>Description</label>
+                </div>
                 <div class="actions">
                     <button class="danger" @click="delDesign(design.id)">Delete</button>
                 </div>

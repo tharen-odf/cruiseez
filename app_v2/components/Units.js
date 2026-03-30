@@ -23,7 +23,7 @@ export default {
             load();
         });
         const addUnit = async () => {
-            await dbAdd("units", { id: uid(), name: "", project_id: "", project_name: "", net_area: "", notes: "", polygon: null, plots: [], designs: [] });
+            await dbAdd("units", { id: uid(), name: "", project_id: "", project_name: "", net_area: "", notes: "", polygon: null, polygon_edited_timestamp: null, polygon_edited_by: "", plots: [], designs: [] });
             load();
         };
         return { units, addUnit };

@@ -1,5 +1,5 @@
 const DB_NAME = "forest_inventory_db";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 let db;
 
 export function uid() {
@@ -13,6 +13,10 @@ export function openDB() {
             db = e.target.result;
             if (!db.objectStoreNames.contains("units")) {
                 db.createObjectStore("units", { keyPath: "id" });
+            }
+            // Ensure setup store is present
+            if (!db.objectStoreNames.contains('setup')) {
+                db.createObjectStore('setup');
             }
         };
         req.onsuccess = e => { db = e.target.result; resolve(); };
@@ -44,4 +48,12 @@ export function debounce(func, delay) {
         clearTimeout(timeout);
         timeout = setTimeout(() => func.apply(context, args), delay);
     };
+}
+
+export async function getSetup() {
+    return idbRequest(tx('setup').get('config'));
+}
+
+export async function saveSetup(setupData) {
+    return idbRequest(tx('setup', 'readwrite').put(setupData, 'config'));
 }
