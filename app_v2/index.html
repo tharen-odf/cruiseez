@@ -26,8 +26,10 @@
 <div id="app">
   <header>
     <button v-show="nav.view !== 'units'" @click="goBack">◀ Back</button>
+    <button v-show="nav.view == 'units'">Home</button>
     <strong>{{ title }}</strong>
-    <button @click="openSetup" class="menu-button">☰</button>
+    <button v-show="nav.view !== 'setup'" @click="openSetup">☰</button>
+    <button v-show="nav.view == 'setup'">☰</button>
   </header>
 
   <main>
