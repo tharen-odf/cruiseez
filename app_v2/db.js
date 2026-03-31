@@ -1,5 +1,5 @@
 const DB_NAME = "forest_inventory_db";
-const DB_VERSION = 4;
+const DB_VERSION = 6;
 let db;
 
 export function uid() {
@@ -12,7 +12,7 @@ export function openDB() {
         req.onupgradeneeded = e => {
             db = e.target.result;
             if (!db.objectStoreNames.contains("units")) {
-                db.createObjectStore("units", { keyPath: "id" });
+                db.createObjectStore("units", { keyPath: "uid" });
             }
             // Ensure setup store is present
             if (!db.objectStoreNames.contains('setup')) {

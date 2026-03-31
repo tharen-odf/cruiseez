@@ -18,7 +18,12 @@
 <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.css" />
 <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.min.js"></script>
 
+<!-- Turf.js -->
+<script src="https://unpkg.com/@turf/turf@7.3.0/turf.min.js"></script>
+
+
 <link rel="stylesheet" href="./styles.css">
+
 </head>
 
 <body>
@@ -28,8 +33,14 @@
     <button v-show="nav.view !== 'units'" @click="goBack">◀ Back</button>
     <button v-show="nav.view == 'units'">Home</button>
     <strong>{{ title }}</strong>
-    <button v-show="nav.view !== 'setup'" @click="openSetup">☰</button>
-    <button v-show="nav.view == 'setup'">☰</button>
+    <div class="dropdown">
+        <button class="dropdown-button">☰</button>
+        <div class="dropdown-content">
+            <a href="#" v-show="nav.view !== 'setup'" @click="openSetup">Setup</a>
+            <a href="#" @click="openAbout">About</a>
+        </div>
+    </div>
+    
   </header>
 
   <main>

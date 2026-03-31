@@ -1,7 +1,7 @@
 {
-  "name": "Forest Inventory Offline",
-  "short_name": "Forest Inv",
-  "description": "An offline-capable application for forest inventory and cruising.",
+  "name": "EZ Cruise",
+  "short_name": "EZ Cruise",
+  "description": "An offline focused application for forest inventory and cruising.",
   "id": "ezcruise-app-v2",
   "start_url": "./index.html",
   "display": "standalone",

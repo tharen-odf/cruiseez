@@ -1,2 +1,3 @@
-# cruiseez
-Standalone HTML cruise webapps
+# ezcruise
+
+Offline forest inventory web application
