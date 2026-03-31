@@ -4,7 +4,7 @@ export default {
     props: ['navData'],
     template: `
         <div v-if="unit">
-            <div v-for="design in unit.designs" :key="design.id" class="card">
+            <div v-for="design in unit.designs" :key="design.uid" class="card">
                 <div class="flex-row">
                     <div class="floating-label">
                         <input placeholder=" " v-model="design.code" @input="save">
@@ -24,7 +24,7 @@ export default {
                     <label>Description</label>
                 </div>
                 <div class="actions">
-                    <button class="danger" @click="delDesign(design.id)">Delete</button>
+                    <button class="danger" @click="delDesign(design.uid)">Delete</button>
                 </div>
             </div>
             <button @click="addDesign">+ Add Design</button>
@@ -37,13 +37,13 @@ export default {
 
         onMounted(async () => {
             emit('update-title', 'Sample Designs');
-            unit.value = await dbGet('units', props.navData.id);
+            unit.value = await dbGet('units', props.navData.uid);
             if (!unit.value.designs) unit.value.designs = [];
         });
 
-        const addDesign = () => { unit.value.designs.push({id:uid(), code:"", method:"", size:"", description:""}); save(); };
+        const addDesign = () => { unit.value.designs.push({uid:uid(), code:"", method:"", size:"", description:""}); save(); };
         const delDesign = (designId) => {
-            if (confirm("Delete design?")) { unit.value.designs = unit.value.designs.filter(d => d.id !== designId); save(); }
+            if (confirm("Delete design?")) { unit.value.designs = unit.value.designs.filter(d => d.uid !== designId); save(); }
         };
         return { unit, save, addDesign, delDesign };
     }

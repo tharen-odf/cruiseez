@@ -1,18 +1,22 @@
-import { dbGet, dbPut, uid, debounce } from '../db.js';
+import { dbGet, dbPut, getSetup, uid, debounce } from '../db.js';
 
 export default {
     props: ['navData'],
     template: `
         <div v-if="unit">
-            <div v-for="plot in unit.plots" :key="plot.id" class="card">
+            <div v-for="plot in unit.plots" :key="plot.uid" class="card">
                 <div class="flex-row">
                     <div class="floating-label">
-                        <input placeholder=" " v-model="plot.name" @input="save">
-                        <label>Plot ID</label>
+                        <input placeholder=" " v-model="plot.plot_num" @input="save">
+                        <label>Plot</label>
                     </div>
                     <div class="floating-label">
-                        <input placeholder=" " v-model="plot.cruiser" @input="save">
-                        <label>Cruiser</label>
+                        <input placeholder=" " v-model="plot.crew" @input="save">
+                        <label>Crew</label>
+                    </div>
+                    <div class="floating-label">
+                        <input placeholder=" " v-model="plot.status" @input="save">
+                        <label>Status</label>
                     </div>
                 </div>
                 <div class="flex-row">
@@ -60,9 +64,10 @@ export default {
                     <label>Notes</label>
                 </div>
                 <div class="actions">
-                    <button @click="$emit('nav', {view:'trees', pid:unit.id, plotId:plot.id})">Trees</button>
-                    <button class="danger" @click="delPlot(plot.id)">Delete</button>
+                    <button @click="$emit('nav', {view:'trees', pid:unit.uid, plotId:plot.uid})">Trees</button>
                     <button class="secondary" @click="getGPS(plot)">Get GPS</button>
+                    <button class="danger push-right" @click="delPlot(plot.uid)">Delete</button>
+                    
                 </div>
             </div>
             <button @click="addPlot">+ Add Plot</button>
@@ -71,21 +76,25 @@ export default {
     setup(props, { emit }) {
         const { ref, onMounted } = Vue;
         const unit = ref(null);
+        const setup = ref(null);
         const save = debounce(() => { if (unit.value) dbPut("units", JSON.parse(JSON.stringify(unit.value))); }, 500);
 
         onMounted(async () => {
             emit('update-title', 'Plots');
-            unit.value = await dbGet('units', props.navData.id);
+            unit.value = await dbGet('units', props.navData.uid);
+            const setup = await getSetup();
         });
 
         const addPlot = () => {
-            unit.value.plots.push({ id: uid(), name:"", cruiser:"", slope: "", aspect: "", elevation: "", notes: "", planned_lat: "", planned_lon: "", gps_lat: "", gps_lon: "", gps_accuracy: "", gps_timestamp: "", trees:[] });
+            // TODO: Auto increment plot_num, copy crew from previous plot
+            unit.value.plots.push({ uid: uid(), plot_num:"", crew:"", status:"Planned", slope: "", aspect: "", elevation: "", notes: "", planned_lat: "", planned_lon: "", gps_lat: "", gps_lon: "", gps_accuracy: "", gps_timestamp: "", trees:[] });
             save();
         };
         const delPlot = (plotId) => {
-            if (confirm("Delete plot?")) { unit.value.plots = unit.value.plots.filter(x => x.id !== plotId); save(); }
+            if (confirm("Delete plot?")) { unit.value.plots = unit.value.plots.filter(x => x.uid !== plotId); save(); }
         };
         const getGPS = (plot) => {
+            // TODO: Weighted average position and accuracy, where weight is the inverse of accuracy
             navigator.geolocation.getCurrentPosition(
                 position => {
                     plot.gps_lat = position.coords.latitude.toFixed(6); // Roughly 8 cm resolution @ 45 deg north

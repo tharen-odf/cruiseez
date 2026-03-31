@@ -3,6 +3,7 @@ const ASSETS = [
     './index.html',
     './db.js',
     './styles.css',
+    './components/Setup.js',
     './components/Units.js',
     './components/Unit.js',
     './components/Plots.js',
@@ -12,7 +13,10 @@ const ASSETS = [
     './manifest.json',
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
-    'https://unpkg.com/vue@3/dist/vue.global.prod.js'
+    'https://unpkg.com/vue@3/dist/vue.global.prod.js',
+    'https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.css',
+    'https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.min.js',
+    'https://unpkg.com/@turf/turf@7.3.0/turf.min.js'
 ];
 
 self.addEventListener('install', event => {

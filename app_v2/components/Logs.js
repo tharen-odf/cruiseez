@@ -14,7 +14,7 @@ export default {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="log in tree.logs" :key="log.id">
+                        <tr v-for="log in tree.logs" :key="log.uid">
                             <td><input v-model="log.number" @input="save" class="cell-input"></td>
                             <td><input v-model="log.length" @input="save" class="cell-input"></td>
                             <td><input v-model="log.grade" @input="save" class="cell-input"></td>
@@ -27,7 +27,7 @@ export default {
                             <td><input v-model="log.gross_bdft" @input="save" class="cell-input"></td>
                             <td><input v-model="log.net_cuft" @input="save" class="cell-input"></td>
                             <td><input v-model="log.net_bdft" @input="save" class="cell-input"></td>
-                            <td><button class="table-button" @click="delLog(log.id)">❌</button></td>
+                            <td><button class="table-button" @click="delLog(log.uid)">❌</button></td>
                         </tr>
                     </tbody>
                 </table>
@@ -44,10 +44,10 @@ export default {
         onMounted(async () => {
             emit('update-title', 'Logs');
             unit.value = await dbGet('units', props.navData.pid);
-            tree.value = unit.value.plots.find(pl => pl.id === props.navData.plotId).trees.find(t => t.id === props.navData.treeId);
+            tree.value = unit.value.plots.find(pl => pl.uid === props.navData.plotId).trees.find(t => t.uid === props.navData.treeId);
         });
-        const addLog = () => { tree.value.logs.push({id:uid(),number:"",length:"",grade:"",def_type:"",def_amt:"",bole_height:"",small_diam:"",large_diam:"",gross_cuft:"",gross_bdft:"",net_cuft:"",net_bdft:""}); save(); };
-        const delLog = (logId) => { if (confirm("Delete log?")) { tree.value.logs = tree.value.logs.filter(l => l.id !== logId); save(); } };
+        const addLog = () => { tree.value.logs.push({uid:uid(),number:"",length:"",grade:"",def_type:"",def_amt:"",bole_height:"",small_diam:"",large_diam:"",gross_cuft:"",gross_bdft:"",net_cuft:"",net_bdft:""}); save(); };
+        const delLog = (logId) => { if (confirm("Delete log?")) { tree.value.logs = tree.value.logs.filter(l => l.uid !== logId); save(); } };
         return { unit, tree, save, addLog, delLog };
     }
 };
