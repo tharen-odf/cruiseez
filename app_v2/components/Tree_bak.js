@@ -3,7 +3,7 @@ import ButtonSelect from './ButtonSelect.js';
 
 export default {
     components: { ButtonSelect },
-    props: ['navData', 'speciesOpts'], // Add the speciesOpts prop to the component
+    props: ['navData'],
     template: `
         <div v-if="unit && plot">
             <div style="overflow-x: auto;">
@@ -26,7 +26,7 @@ export default {
                             </td>
                             <td><input v-model="tree.number" @input="save" class="cell-input"></td>
                             <td><input v-model="tree.condition" @input="save" class="cell-input"></td>
-                            <td><ButtonSelect :options="speciesOpts" v-model="tree.species" @input="save"></td> <!-- Use the speciesOpts prop to populate the options list -->
+                            <td><ButtonSelect v-model:options="speciesOpts" v-model="tree.species" @input="save" class="cell-input"></td>
                             <td><input v-model="tree.count" @input="save" class="cell-input"></td>
                             <td><input v-model="tree.diameter" @input="save" class="cell-input"></td>
                             <td><input v-model="tree.form_point" @input="save" class="cell-input"></td>
@@ -50,21 +50,21 @@ export default {
         </div>
     `,
     setup(props, { emit }) {
-        const { ref, onMounted, inject } = Vue;
+        const { ref, onMounted } = Vue;
         const unit = ref(null);
         const plot = ref(null);
-        const speciesOpts = inject('speciesOpts')
-        console.log(speciesOpts.value)
-        // const
         const save = debounce(() => { if (unit.value) dbPut("units", JSON.parse(JSON.stringify(unit.value))); }, 500);
+        console.log(props.speciesList)
+        const localSpeciesList = ref([...props.speciesList])
+
         onMounted(async () => {
             emit('update-title', 'Trees');
             unit.value = await dbGet('units', props.navData.pid);
             plot.value = unit.value.plots.find(pl => pl.uid === props.navData.plotId);
         });
 
-        const addTree = () => { plot.value.trees.push({ uid:uid(), number:"", condition: "", designCode: "", species:"", count:"", diameter:"", form_point: "", form_factor: "", tdf: "", bole_height: "", total_height:"", crown_ratio: "", position: "", damage_1: "", severity_1: "", damage_2: "", severity_2: "", logs:[] }); save(); }
-        const delTree = (treeId) => { if (confirm("Delete tree?")) { plot.value.trees = plot.value.trees.filter(t => t.uid !== treeId); save(); } }
+        const addTree = () => { plot.value.trees.push({ uid:uid(), number:"", condition: "", designCode: "", species:"", count:"", diameter:"", form_point: "", form_factor: "", tdf: "", bole_height: "", total_height:"", crown_ratio: "", position: "", damage_1: "", severity_1: "", damage_2: "", severity_2: "", logs:[] }); save(); };
+        const delTree = (treeId) => { if (confirm("Delete tree?")) { plot.value.trees = plot.value.trees.filter(t => t.uid !== treeId); save(); } };
         return { unit, plot, save, addTree, delTree };
     }
 };

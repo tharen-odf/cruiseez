@@ -1,0 +1,13 @@
+# Project Architecture
+
+This is a Vue 3 application using the Composition API with no build step. The app is being designed to work offline as
+as a PWA. The main purpose is to collect field data related
+to forest inventory. Data is stored locally and will be
+imported and exported using JSON files that are manually 
+distributed to field workers.
+
+- Components in '/app_v2/components'
+- Database logic in '/app_v2/db.js'
+- PWA service worker in '/sw.js
+- CSS styles in '/app_v2/styles.css'
+- Main app located in '/app_v2/index.html'

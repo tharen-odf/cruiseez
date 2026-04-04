@@ -19,7 +19,7 @@ input, textarea { box-sizing: border-box; width:100%; margin:4px 0; padding:2px;
 input:read-only { border: 1px solid; background-color: #e2e2e2; cursor: not-allowed;}
 table { width:100%; border-collapse:collapse; font-size: x-small;}
 th { border:1px solid #ccc; padding:2px; text-align:center; }
-td { border:1px solid #ccc; padding:2px; text-align:center; }
+td { border:1px solid #ccc; padding:2px; text-align:center; position: relative;}
 .actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
 .push-right { margin-left: auto;}
 #map { box-sizing: border-box; height:75vh; width:100%; margin-top:2px; }

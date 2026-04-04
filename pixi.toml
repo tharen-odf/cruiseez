@@ -1,0 +1,11 @@
+[workspace]
+authors = ["tharen-odf <104120984+tharen-odf@users.noreply.github.com>"]
+channels = ["conda-forge"]
+name = "ezcruise"
+platforms = ["win-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+python = "3.13.*"

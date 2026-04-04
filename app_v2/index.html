@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <title>Forest Inventory - Offline</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#2f6f4e">
 
@@ -103,7 +103,15 @@ const App = {
     }
 };
 
-createApp(App).mount('#app');
+// Global variables
+// TODO: Get list of species from the database
+const speciesOpts = ref(['DF','WH','RA','BM','RC','NF','SS','R4','OC','OH']);
+const designOpts = ref([]);
+
+const app = createApp(App)
+app.provide('speciesOpts', speciesOpts)
+app.mount('#app');
+
 </script>
 </body>
 </html>
